@@ -7,7 +7,7 @@ name = "phishclf"
 version = "0.1.0"
 description = "Explainable phishing-email classifier (scikit-learn) with an alert threshold set by false-positive budget"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = { text = "MIT" }
 dependencies = ["scikit-learn>=1.5", "numpy", "scipy", "joblib"]
 
@@ -23,7 +23,7 @@ addopts = "-q"
 
 [tool.ruff]
 line-length = 120
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF"]

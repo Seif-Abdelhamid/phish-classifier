@@ -94,7 +94,7 @@ correctly passed.
 
 ## Setup and usage
 
-Requires Python 3.11+.
+Requires Python 3.12+.
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
@@ -116,7 +116,7 @@ ruff check . && ruff format --check .
 bandit -c pyproject.toml -r phishclf
 ```
 
-CI runs the tests on Python 3.11 to 3.13, Ruff, Bandit and pip-audit.
+CI runs the tests on Python 3.12 and 3.13, Ruff, Bandit and pip-audit.
 
 ## Limitations
 
