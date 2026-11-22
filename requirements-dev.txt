@@ -1,0 +1,8 @@
+scikit-learn==1.9.1
+numpy==2.5.5
+scipy==1.18.1
+joblib==1.6.0
+pytest==9.2.0
+pytest-cov==7.1.0
+ruff==0.17.6
+bandit==1.9.4

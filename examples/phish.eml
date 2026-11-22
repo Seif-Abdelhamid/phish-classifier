@@ -1,0 +1,7 @@
+From: "IT Service Desk" <support@helpdesk-verify.example>
+To: student@university.example
+Subject: URGENT: your mailbox will be suspended
+
+Your account will be locked within 24 hours. Verify your password immediately:
+http://192.0.2.15/login/verify?user=student
+Click here to confirm your login and avoid suspension!

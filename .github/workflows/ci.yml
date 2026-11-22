@@ -1,0 +1,39 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: pip install -r requirements-dev.txt && pip install -e .
+      - name: Ruff (lint + format)
+        run: ruff check . && ruff format --check .
+      - name: Pytest (synthetic data, no download)
+        run: pytest --cov=phishclf --cov-report=term --cov-fail-under=80
+
+  security:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install bandit==1.9.4 pip-audit==2.10.1
+      - name: Bandit (SAST)
+        run: bandit -c pyproject.toml -r phishclf
+      - name: pip-audit
+        run: pip-audit -r requirements-dev.txt
