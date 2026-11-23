@@ -158,3 +158,35 @@ def test_score_end_to_end(tmp_path, capsys):
     assert code == 1 and out["verdict"] == "phishing" and out["top_reasons"]
     code = cli.main(["score", str(EXAMPLES / "benign.eml"), "--model", str(model), "--threshold", "0.5"])
     assert code == 0
+
+
+# -- model comparison ---------------------------------------------------------------------------
+
+
+def test_expected_calibration_error():
+    from phishclf.compare import expected_calibration_error
+
+    assert expected_calibration_error([0, 1, 0, 1], [0.0, 1.0, 0.0, 1.0]) == pytest.approx(0.0)
+    assert expected_calibration_error([0, 0, 0, 0], [0.9, 0.9, 0.9, 0.9]) == pytest.approx(0.9)
+
+
+def test_compare_sklearn_models_over_seeds():
+    from phishclf.compare import compare
+
+    texts, labels = corpus()
+    report = compare(texts, labels, seeds=(0, 1), models=["logreg", "linear_svm", "naive_bayes"], log=lambda m: None)
+    assert set(report["summary"]) == {"logreg", "linear_svm", "naive_bayes"}
+    assert len(report["runs"]["logreg"]) == 2
+    assert report["summary"]["logreg"]["f1"]["mean"] > 0.9
+    assert "brier" in report["summary"]["logreg"] and "brier" not in report["summary"]["linear_svm"]
+
+
+def test_fasttext_torch_learns():
+    pytest.importorskip("torch")
+    from phishclf.neural import FastTextClassifier, token_ids
+
+    assert token_ids("Click here!", 1000) == token_ids("click HERE !", 1000)  # stable hashing
+    texts, labels = corpus()
+    ft = FastTextClassifier(buckets=1 << 12, dim=16, epochs=15, seed=0).fit(texts, labels, texts, labels)
+    prob = ft.predict_proba(texts)[:, 1]
+    assert np.mean((prob >= 0.5) == np.array(labels)) > 0.95

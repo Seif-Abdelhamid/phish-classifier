@@ -4,12 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phishclf"
-version = "0.1.0"
+version = "0.2.0"
 description = "Explainable phishing-email classifier (scikit-learn) with an alert threshold set by false-positive budget"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 dependencies = ["scikit-learn>=1.5", "numpy", "scipy", "joblib"]
+
+[project.optional-dependencies]
+torch = ["torch>=2.4"]
 
 [project.scripts]
 phishclf = "phishclf.cli:main"

@@ -1,6 +1,7 @@
 # phish-classifier
 
-An explainable phishing-email classifier built with scikit-learn. It scores an email (a raw
+An explainable phishing-email classifier built with scikit-learn, compared against a PyTorch
+neural model over 5 random splits. It scores an email (a raw
 `.eml` file or plain text), says **why** (the words and signals that pushed the score up), and
 alerts at a threshold chosen from a **false-positive budget** instead of an arbitrary 0.5.
 
@@ -92,6 +93,42 @@ correctly passed.
   public collection, and its mail may look very different from your organization's. Expect lower
   scores on real reported mail.
 
+## Model comparison (5 random splits, including a PyTorch model)
+
+One split can be lucky or unlucky, so `phishclf compare` retrains four models on 5 different
+stratified splits (seeds 0–4). Each model gets its threshold from the same 1% false-positive budget
+on validation and is scored once on test. Mean ± standard deviation over the 5 test sets:
+
+| Model                                                                   | F1                | Recall    | False-positive rate | ROC-AUC | Calibration error (ECE) | Train time |
+| ----------------------------------------------------------------------- | ----------------- | --------- | ------------------- | ------- | ----------------------- | ---------- |
+| Linear SVM (same features as the shipped model)                         | **0.988 ± 0.002** | **0.989** | **0.71% ± 0.22%**   | 0.9993  | n/a (margins)           | 1 s        |
+| **Logistic regression** (shipped model)                                 | 0.986 ± 0.002     | 0.986     | 0.85% ± 0.38%       | 0.9991  | 0.029                   | 2 s        |
+| fastText-style neural model, **PyTorch** (learned embeddings, n-grams)  | 0.976 ± 0.004     | 0.967     | 0.89% ± 0.27%       | 0.9969  | **0.008**               | 77 s       |
+| Naive Bayes (word TF-IDF)                                               | 0.969 ± 0.003     | 0.957     | 1.11% ± 0.38%       | 0.9970  | 0.086                   | 3 s        |
+
+Train time excludes the shared TF-IDF step. Seed 0 reproduces the Results table above exactly.
+
+What this shows:
+
+- **The 1.58% false-positive rate above was an unlucky split.** Over 5 splits the shipped model
+  averages 0.85%, inside the 1% budget, but one split in five can still exceed it. That is the
+  real uncertainty of a threshold picked on about 2,600 validation emails.
+- **The linear SVM is slightly better** (F1 0.988 vs 0.986), but the gap is about one standard
+  deviation, and an SVM gives margins rather than probabilities. Logistic regression stays the
+  shipped model because its per-feature reasons and probabilities are what the analyst sees.
+- **The PyTorch model is less accurate but much better calibrated** (ECE 0.008 vs 0.029): when it
+  says 0.9, about 90% of those emails really are phishing. Learned embeddings did not beat
+  character n-grams on 12,000 training emails; it is also 40× slower to train on a laptop CPU.
+  The model is in `phishclf/neural.py`: hashed word unigrams and bigrams, a mean-pooled
+  `EmbeddingBag`, one linear layer, a class-weighted loss, and early stopping on validation loss.
+- **Naive Bayes is the worst calibrated** (ECE 0.086), which is a known weakness of its
+  independence assumption.
+
+```bash
+pip install -e ".[torch]"     # optional: adds PyTorch for the neural model
+phishclf compare --seeds 5    # about 12 minutes on a laptop CPU; writes model/compare.json
+```
+
 ## Setup and usage
 
 Requires Python 3.12+.
@@ -111,12 +148,12 @@ baselines and the threshold used, are written to `model/report.json`.
 
 ```bash
 pip install -r requirements-dev.txt && pip install -e .
-pytest --cov=phishclf # 13 tests on synthetic emails (no download needed)
+pytest --cov=phishclf # 16 tests on synthetic emails (no download needed)
 ruff check . && ruff format --check .
 bandit -c pyproject.toml -r phishclf
 ```
 
-CI runs the tests on Python 3.12 and 3.13, Ruff, Bandit and pip-audit.
+CI runs the tests on Python 3.12 and 3.13 (with CPU PyTorch), Ruff, Bandit and pip-audit.
 
 ## Limitations
 

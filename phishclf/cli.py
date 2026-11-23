@@ -104,6 +104,25 @@ def cmd_score(args) -> int:
     return 1 if any(r.get("verdict") == "phishing" for r in results) else 0
 
 
+def cmd_compare(args) -> int:
+    from phishclf.compare import compare
+
+    ds = data.load(data.download(args.data))
+    seeds = tuple(range(args.seeds))
+    report = compare(ds.texts, ds.labels, seeds=seeds, max_fpr=args.max_fpr, log=lambda m: print(m, file=sys.stderr))
+    report["dataset_used"] = len(ds.texts)
+    os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
+    with open(args.out, "w") as fh:
+        json.dump(report, fh, indent=2)
+    for name, s in report["summary"].items():
+        print(
+            f"{name:15} F1 {s['f1']['mean']:.3f}±{s['f1']['std']:.3f}  "
+            f"FPR {s['false_positive_rate']['mean']:.2%}±{s['false_positive_rate']['std']:.2%}  "
+            f"recall {s['recall']['mean']:.3f}  ROC-AUC {s['roc_auc']['mean']:.4f}"
+        )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="phishclf", description="Explainable phishing-email classifier")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -118,10 +137,17 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--model", default="model/phishclf.joblib")
     s.add_argument("--report", default="model/report.json")
     s.add_argument("--threshold", type=float)
+    c = sub.add_parser("compare", help="compare logreg, linear SVM, naive Bayes and a PyTorch model over seeds")
+    c.add_argument("--data", default="data/Phishing_Email.csv")
+    c.add_argument("--out", default="model/compare.json")
+    c.add_argument("--seeds", type=int, default=5)
+    c.add_argument("--max-fpr", type=float, default=0.01)
     args = p.parse_args(argv)
     if args.cmd == "train":
         os.makedirs(os.path.dirname(os.path.abspath(args.model)), exist_ok=True)
         return cmd_train(args)
+    if args.cmd == "compare":
+        return cmd_compare(args)
     return cmd_score(args)
 
 
